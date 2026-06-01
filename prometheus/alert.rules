@@ -1,0 +1,26 @@
+groups:
+  - name: jenkins_alerts
+    rules:
+      - alert: JenkinsJobFailed
+        expr: jenkins_job_last_build_result{result="FAILURE"} > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Jenkins job {{ $labels.job_name }} failed"
+          
+      - alert: JenkinsBuildQueueHigh
+        expr: jenkins_queue_size > 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High build queue: {{ $value }} builds pending"
+          
+      - alert: JenkinsExecutorBusy
+        expr: jenkins_executor_count_busy / jenkins_executor_count_total > 0.9
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: "Executors heavily loaded: {{ $value | humanizePercentage }}"
