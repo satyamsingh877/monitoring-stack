@@ -1,24 +1,25 @@
+cat > docker-compose.yml << 'EOF'
 version: '3.8'
 
 networks:
-  monitoring:
+  monitoring-net:
     driver: bridge
 
 services:
   jenkins:
-    image: jenkins/jenkins:lts-jdk11
+    image: jenkins/jenkins:lts
     container_name: jenkins
+    user: root
     ports:
       - "8080:8080"
       - "50000:50000"
     volumes:
-      - ./jenkins/jenkins_home:/var/jenkins_home
+      - jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - JENKINS_OPTS=--prefix=/jenkins
-      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+      - JAVA_OPTS=-Xmx512m
     networks:
-      - monitoring
+      - monitoring-net
     restart: unless-stopped
 
   prometheus:
@@ -27,15 +28,14 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus-data:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
     networks:
-      - monitoring
+      - monitoring-net
     restart: unless-stopped
 
   grafana:
@@ -44,14 +44,13 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - grafana-data:/var/lib/grafana
-      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
-      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+      - grafana_data:/var/lib/grafana
     environment:
+      - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_INSTALL_PLUGINS=grafana-piechart-panel
     networks:
-      - monitoring
+      - monitoring-net
     restart: unless-stopped
 
   node-exporter:
@@ -68,9 +67,11 @@ services:
       - '--path.sysfs=/host/sys'
       - '--path.rootfs=/rootfs'
     networks:
-      - monitoring
+      - monitoring-net
     restart: unless-stopped
 
 volumes:
-  prometheus-data:
-  grafana-data:docker-compose.yml
+  jenkins_home:
+  prometheus_data:
+  grafana_data:
+EOF
